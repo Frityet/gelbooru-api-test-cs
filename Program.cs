@@ -105,8 +105,6 @@ async Task WriteTagsToDiskAsync(int id, int page, bool triedBefore = false)
         Console.ResetColor();
     }
 
-    if (!triedBefore)
-        await info($"Starting");
     var outFile = $"pages/{page}.json";
     if (File.Exists(outFile))
         await error($"File already exists");
@@ -133,7 +131,7 @@ async Task WriteTagsToDiskAsync(int id, int page, bool triedBefore = false)
 
     await File.WriteAllTextAsync(outFile, res.Item2);
 
-    await success($"Done!");
+    await success($"Downloaded!");
 }
 
 class TagList(TagList.TagAttributes attributes, TagList.Tag[] tags)
