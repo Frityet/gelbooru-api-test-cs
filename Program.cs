@@ -45,7 +45,7 @@ for (int i = 0; i < threadCount; i++)
 
     void fn(int i)
     {
-        tasks[i-1] = Task.Run(async () =>
+        tasks[i-2] = Task.Run(async () =>
         {
             using var client = new HttpClient();
             var timer = Stopwatch.StartNew();
@@ -67,7 +67,7 @@ for (int i = 0; i < threadCount; i++)
         });
     }
     //so we capture the value of i, no race condition
-    fn(i+1);
+    fn(i+2);
 }
 
 Console.Clear();
@@ -80,6 +80,12 @@ while (!task.IsCompleted)
     Console.SetCursorPosition(0, 0);
     ClearCurrentConsoleLine();
     Console.Write($"{successfulTagLists.Count}/{remaining} ({Math.Round(successfulTagLists.Count / (double)remaining, 2) * 100}%) completed\t{String.Format("{0:0.00}s {1, -64}", elapsed / 10, NumberToBlocks(elapsed))}");
+
+    Console.SetCursorPosition(0, 1);
+    ClearCurrentConsoleLine();
+    //Show a block progress bar
+    Console.Write($"[{new string('█', successfulTagLists.Count / 100)}{new string('▌', successfulTagLists.Count % 100)}{new string(' ', 100 - successfulTagLists.Count % 100)}]");
+
     await Task.Delay(100);
 }
 Console.CursorVisible = true;
@@ -145,7 +151,7 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
         res = await TagList.GetTagListAsync(client, API_KEY, USER_ID, page);
     } catch (Exception ex) when (ex is TagList.DeserialisationException or HttpRequestException) {
         if (!triedBefore) {
-            error($"Failed to get tags: {ex.Message}, retrying...", @throw: false);
+            // error($"Failed to get tags: {ex.Message}, retrying...", @throw: false);
             await Task.Delay(1000);
             await WriteTagsToDiskAsync(timer, client, id, page, true);
             return;
