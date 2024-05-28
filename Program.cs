@@ -87,12 +87,21 @@ Console.WriteLine($"Total: \x1b[32m{successfulTagLists.Count}\x1b[0m/\x1b[31m{TA
 
 return;
 
+void ClearCurrentConsoleLine()
+{
+    int currentLineCursor = Console.CursorTop;
+    Console.SetCursorPosition(0, Console.CursorTop);
+    Console.Write(new string(' ', Console.WindowWidth));
+    Console.SetCursorPosition(0, currentLineCursor);
+}
+
 async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int page, bool triedBefore = false)
 {
     void error(string msg, bool @throw = true)
     {
         Console.ForegroundColor = ConsoleColor.DarkRed;
         Console.SetCursorPosition(0, id);
+        ClearCurrentConsoleLine();
         Console.Error.Write($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
 
@@ -104,6 +113,7 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
     {
         Console.ForegroundColor = ConsoleColor.DarkGreen;
         Console.SetCursorPosition(0, id);
+        ClearCurrentConsoleLine();
         Console.Out.Write($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
     }
