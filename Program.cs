@@ -36,6 +36,7 @@ for (int i = 0; i < args.Length; i++)
 
 var tasks = new Task[threadCount]; //max 8 tasks at a time
 
+int remaining = TAGLIST_COUNT - completedTagLists.Count;
 //each gets TAGLIST_COUNT / 8 pages
 for (int i = 0; i < threadCount; i++)
 {
@@ -78,7 +79,7 @@ while (!task.IsCompleted)
     var elapsed = lastCompleted.ElapsedMilliseconds / 100.0;
     Console.SetCursorPosition(0, 0);
     ClearCurrentConsoleLine();
-    Console.Write($"{successfulTagLists.Count}/{TAGLIST_COUNT} ({Math.Round(successfulTagLists.Count / (double)TAGLIST_COUNT, 2) * 100}%) completed \t {String.Format("{0:0.00}s {1, -64}", elapsed / 10, NumberToBlocks(elapsed))}");
+    Console.Write($"{successfulTagLists.Count}/{remaining} ({Math.Round(successfulTagLists.Count / (double)remaining, 2) * 100}%) completed\t{String.Format("{0:0.00}s {1, -64}", elapsed / 10, NumberToBlocks(elapsed))}");
     await Task.Delay(100);
 }
 Console.CursorVisible = true;
