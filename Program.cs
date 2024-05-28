@@ -79,12 +79,12 @@ while (!task.IsCompleted)
     var elapsed = lastCompleted.ElapsedMilliseconds / 100.0;
     Console.SetCursorPosition(0, 0);
     ClearCurrentConsoleLine();
-    Console.Write($"{successfulTagLists.Count}/{remaining} ({Math.Round(successfulTagLists.Count / (double)remaining, 2) * 100}%) completed\t{String.Format("{0:0.00}s {1, -64}", elapsed / 10, NumberToBlocks(elapsed))}");
+    var pcntDone = successfulTagLists.Count / (double)remaining;
+    Console.Write($"{successfulTagLists.Count}/{remaining} ({Math.Round(pcntDone, 2) * 100}%) completed\t{String.Format("{0:0.00}s {1, -64}", elapsed / 10, NumberToBlocks(elapsed))}");
 
     Console.SetCursorPosition(0, 1);
     ClearCurrentConsoleLine();
-    //Show a block progress bar
-    Console.Write($"[{new string('█', successfulTagLists.Count / 100)}{new string('▌', successfulTagLists.Count % 100)}{new string(' ', 100 - successfulTagLists.Count % 100)}]");
+    Console.Write($"[{new string('█', (int)(pcntDone * 50))}{new string(' ', 50 - (int)(pcntDone * 50))}]");
 
     await Task.Delay(100);
 }
