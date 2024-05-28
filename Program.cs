@@ -1,4 +1,5 @@
 ﻿
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -106,6 +107,8 @@ async Task WriteTagsToDiskAsync(HttpClient client, int id, int page, bool triedB
         Console.ResetColor();
     }
 
+    var timer = Stopwatch.StartNew();
+
     var outFile = $"pages/{page}.json";
     if (File.Exists(outFile))
         await error($"File already exists");
@@ -132,7 +135,7 @@ async Task WriteTagsToDiskAsync(HttpClient client, int id, int page, bool triedB
 
     await File.WriteAllTextAsync(outFile, res.Item2);
 
-    await success($"Downloaded!");
+    await success($"Downloaded! Took \x1b[34m{timer.ElapsedMilliseconds / 1000.0}s\x1b[0m");
 }
 
 class TagList(TagList.TagAttributes attributes, TagList.Tag[] tags)
