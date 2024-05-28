@@ -85,13 +85,6 @@ return;
 
 async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int page, bool triedBefore = false)
 {
-    async Task info(string msg)
-    {
-        Console.ForegroundColor = ConsoleColor.DarkMagenta;
-        await Console.Out.WriteLineAsync($"[{id} - {page}]\t{msg}");
-        Console.ResetColor();
-    }
-
     async Task error(string msg, bool @throw = true)
     {
         Console.ForegroundColor = ConsoleColor.DarkRed;
@@ -118,14 +111,13 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
         res = await TagList.GetTagListAsync(client, API_KEY, USER_ID, page);
     } catch (Exception ex) when (ex is TagList.DeserialisationException or HttpRequestException) {
         if (!triedBefore) {
-            await error($"Failed to get tags: {ex.Message}", @throw: false);
-            await info($"Retrying...");
+            await error($"Failed to get tags: {ex.Message}, retrying...", @throw: false);
             await Task.Delay(1000);
             await WriteTagsToDiskAsync(timer, client, id, page, true);
             return;
         } else {
-            await error($"Failed again");
-            throw;
+            await error($"Failed again, took {timer.ElapsedMilliseconds / 1000.0}s");
+            throw; //unreachable
         }
     }
 
@@ -135,7 +127,7 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
 
     await File.WriteAllTextAsync(outFile, res.Item2);
 
-    await success($"Downloaded! \x1b[34mTook {timer.ElapsedMilliseconds / 1000.0}s\x1b[0m\t(\x1b[35m{lastCompleted.ElapsedMilliseconds / 1000.0}s since last completion\x1b[0m)");
+    await success($"Downloaded! \x1b[34mTook {timer.ElapsedMilliseconds / 1000.0}s\x1b[0m (\x1b[35m{lastCompleted.ElapsedMilliseconds / 1000.0}s since last completion\x1b[0m)");
     lastCompleted.Restart();
     timer.Restart();
 }
