@@ -97,7 +97,7 @@ async Task WriteTagsToDiskAsync(int id, int page, bool triedBefore = false)
 
     var success = async (string msg) => {
         Console.ForegroundColor = ConsoleColor.DarkGreen;
-        await Console.Out.WriteLineAsync($"{id} - [{page}]\t{msg}");
+        await Console.Out.WriteLineAsync($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
     };
 
