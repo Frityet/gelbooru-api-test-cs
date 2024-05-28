@@ -69,6 +69,8 @@ for (int i = 0; i < threadCount; i++)
     fn(i);
 }
 
+Console.Clear();
+
 Console.CursorVisible = false;
 await Task.WhenAll(tasks);
 Console.CursorVisible = true;
@@ -90,7 +92,7 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
     async Task error(string msg, bool @throw = true)
     {
         Console.ForegroundColor = ConsoleColor.DarkRed;
-        Console.SetCursorPosition(0, Console.CursorTop + id);
+        Console.SetCursorPosition(0, id);
         await Console.Error.WriteAsync($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
 
