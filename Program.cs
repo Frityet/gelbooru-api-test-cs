@@ -135,7 +135,7 @@ async Task WriteTagsToDiskAsync(HttpClient client, int id, int page, bool triedB
 
     await File.WriteAllTextAsync(outFile, res.Item2);
 
-    await success($"Downloaded! Took \x1b[34m{timer.ElapsedMilliseconds / 1000.0}s\x1b[0m");
+    await success($"Downloaded! \x1b[34mTook {timer.ElapsedMilliseconds / 1000.0}s\x1b[0m");
 }
 
 class TagList(TagList.TagAttributes attributes, TagList.Tag[] tags)
