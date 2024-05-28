@@ -46,6 +46,7 @@ for (int i = 0; i < threadCount; i++)
         tasks[i] = Task.Run(async () =>
         {
             using var client = new HttpClient();
+            var timer = Stopwatch.StartNew();
             for (int page = start; page < end; page++)
             {
                 if (completedTagLists.Contains(page))
@@ -53,7 +54,7 @@ for (int i = 0; i < threadCount; i++)
 
                 try
                 {
-                    await WriteTagsToDiskAsync(client, i, page);
+                    await WriteTagsToDiskAsync(timer, client, i, page);
                     successfulTagLists.Add(page);
                 }
                 catch (Exception)
@@ -81,7 +82,7 @@ Console.WriteLine($"Total: \x1b[32m{successfulTagLists.Count}\x1b[0m/\x1b[31m{TA
 
 return;
 
-async Task WriteTagsToDiskAsync(HttpClient client, int id, int page, bool triedBefore = false)
+async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int page, bool triedBefore = false)
 {
     async Task info(string msg)
     {
@@ -107,8 +108,6 @@ async Task WriteTagsToDiskAsync(HttpClient client, int id, int page, bool triedB
         Console.ResetColor();
     }
 
-    var timer = Stopwatch.StartNew();
-
     var outFile = $"pages/{page}.json";
     if (File.Exists(outFile))
         await error($"File already exists");
@@ -121,7 +120,7 @@ async Task WriteTagsToDiskAsync(HttpClient client, int id, int page, bool triedB
             await error($"Failed to get tags: {ex.Message}", @throw: false);
             await info($"Retrying...");
             await Task.Delay(1000);
-            await WriteTagsToDiskAsync(client, id, page, true);
+            await WriteTagsToDiskAsync(timer, client, id, page, true);
             return;
         } else {
             await error($"Failed again");
@@ -136,6 +135,7 @@ async Task WriteTagsToDiskAsync(HttpClient client, int id, int page, bool triedB
     await File.WriteAllTextAsync(outFile, res.Item2);
 
     await success($"Downloaded! \x1b[34mTook {timer.ElapsedMilliseconds / 1000.0}s\x1b[0m");
+    timer.Reset();
 }
 
 class TagList(TagList.TagAttributes attributes, TagList.Tag[] tags)
