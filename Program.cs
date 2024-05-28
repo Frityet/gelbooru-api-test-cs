@@ -90,7 +90,7 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
     async Task error(string msg, bool @throw = true)
     {
         Console.ForegroundColor = ConsoleColor.DarkRed;
-        Console.SetCursorPosition(0, Console.CursorTop - id);
+        Console.SetCursorPosition(0, Console.CursorTop + id);
         await Console.Error.WriteAsync($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
 
@@ -101,7 +101,7 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
     async Task success(string msg)
     {
         Console.ForegroundColor = ConsoleColor.DarkGreen;
-        Console.SetCursorPosition(0, Console.CursorTop - id);
+        Console.SetCursorPosition(0, Console.CursorTop + id);
         await Console.Out.WriteAsync($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
     }
