@@ -136,6 +136,7 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
 
     await success($"Downloaded! \x1b[34mTook {timer.ElapsedMilliseconds / 1000.0}s\x1b[0m");
     timer.Reset();
+    timer.Start();
 }
 
 class TagList(TagList.TagAttributes attributes, TagList.Tag[] tags)
