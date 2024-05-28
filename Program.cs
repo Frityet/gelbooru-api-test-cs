@@ -1,5 +1,6 @@
 ﻿
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -80,7 +81,7 @@ while (!task.IsCompleted)
     Console.SetCursorPosition(0, 0);
     ClearCurrentConsoleLine();
     var pcntDone = successfulTagLists.Count / (double)remaining;
-    Console.Write($"{successfulTagLists.Count}/{remaining} ({Math.Round(pcntDone, 2) * 100}%) completed\t{String.Format("{0:0.00}s {1, -64}", elapsed / 10, NumberToBlocks(elapsed))}");
+    Console.Write($"{successfulTagLists.Count}/{remaining} ({Math.Round(pcntDone * 100)}%) completed\t{String.Format("{0:0.00}s {1, -64}", elapsed / 10, NumberToBlocks(elapsed))}");
 
     Console.SetCursorPosition(0, 1);
     ClearCurrentConsoleLine();
@@ -89,6 +90,7 @@ while (!task.IsCompleted)
     await Task.Delay(100);
 }
 Console.CursorVisible = true;
+
 
 Console.ForegroundColor = ConsoleColor.DarkYellow;
 Console.WriteLine($"Statistics:");
@@ -121,30 +123,55 @@ string NumberToBlocks(double num)
 
 async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int page, bool triedBefore = false)
 {
-    void error(string msg, bool @throw = true)
+    // void error(string msg, bool @throw = true)
+    // {
+    //     Console.ForegroundColor = ConsoleColor.DarkRed;
+    //     Console.SetCursorPosition(0, id);
+    //     ClearCurrentConsoleLine();
+    //     Console.Error.Write($"[{id} - {page}]\t{msg}");
+    //     Console.ResetColor();
+
+    //     if (@throw)
+    //         throw new Exception(msg);
+    // }
+
+    // void success(string msg)
+    // {
+    //     Console.ForegroundColor = ConsoleColor.DarkGreen;
+    //     Console.SetCursorPosition(0, id);
+    //     ClearCurrentConsoleLine();
+    //     Console.Out.Write($"[{id} - {page}]\t{msg}");
+	// Console.Out.Flush();
+    //     Console.ResetColor();
+
+    // }
+
+    async Task error(string msg, bool @throw = true)
     {
         Console.ForegroundColor = ConsoleColor.DarkRed;
         Console.SetCursorPosition(0, id);
         ClearCurrentConsoleLine();
-        Console.Error.Write($"[{id} - {page}]\t{msg}");
+        await Console.Error.WriteAsync($"[{id} - {page}]\t{msg}");
+        await Console.Error.FlushAsync();
         Console.ResetColor();
 
         if (@throw)
             throw new Exception(msg);
     }
 
-    void success(string msg)
+    async Task success(string msg)
     {
         Console.ForegroundColor = ConsoleColor.DarkGreen;
         Console.SetCursorPosition(0, id);
         ClearCurrentConsoleLine();
-        Console.Out.Write($"[{id} - {page}]\t{msg}");
+        await Console.Out.WriteAsync($"[{id} - {page}]\t{msg}");
+        await Console.Out.FlushAsync();
         Console.ResetColor();
     }
 
     var outFile = $"pages/{page}.json";
     if (File.Exists(outFile))
-        error($"File already exists");
+        await error($"File already exists");
 
     (TagList?, string) res;
     try {
@@ -156,19 +183,19 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
             await WriteTagsToDiskAsync(timer, client, id, page, true);
             return;
         } else {
-            error($"Failed again, took {timer.ElapsedMilliseconds / 1000.0}s");
+            await error($"Failed again, took {timer.ElapsedMilliseconds / 1000.0}s");
             throw; //unreachable
         }
     }
 
     if (res.Item1 == null || res.Item1.Tags == null || res.Item1.Tags.Length == 0)
-        error($"No tags found");
+        await error($"No tags found");
 
 
     await File.WriteAllTextAsync(outFile, res.Item2);
 
     var tElapsed = timer.ElapsedMilliseconds / 100.0;
-    success(String.Format("Downloaded! \x1b[34mTime elapsed: {0, -100}", String.Format("{0:0.00}s {1}", tElapsed / 10, NumberToBlocks(tElapsed))));
+    await success(String.Format("Downloaded! \x1b[34mTime elapsed: {0, -100}", String.Format("{0:0.00}s {1}", tElapsed / 10, NumberToBlocks(tElapsed))));
 
     lastCompleted.Restart();
     timer.Restart();
