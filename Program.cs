@@ -9,6 +9,7 @@ const int TAGLIST_COUNT = 10098;
 
 var completedTagLists = new HashSet<int>();
 var failedTagLists = new HashSet<int>();
+var lastCompleted = Stopwatch.StartNew();
 
 if (!Directory.Exists("pages"))
     Directory.CreateDirectory("pages");
@@ -134,9 +135,9 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
 
     await File.WriteAllTextAsync(outFile, res.Item2);
 
-    await success($"Downloaded! \x1b[34mTook {timer.ElapsedMilliseconds / 1000.0}s\x1b[0m");
-    timer.Reset();
-    timer.Start();
+    await success($"Downloaded! \x1b[34mTook {timer.ElapsedMilliseconds / 1000.0}s\x1b[0m (\x1b[35m{lastCompleted.ElapsedMilliseconds / 1000.0}s\x1b[0m since last completion)");
+    lastCompleted.Restart();
+    timer.Restart();
 }
 
 class TagList(TagList.TagAttributes attributes, TagList.Tag[] tags)
