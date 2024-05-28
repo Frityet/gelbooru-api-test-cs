@@ -44,6 +44,7 @@ for (int i = 0; i < threadCount; i++)
     {
         tasks[i] = Task.Run(async () =>
         {
+            using var client = new HttpClient();
             for (int page = start; page < end; page++)
             {
                 if (completedTagLists.Contains(page))
@@ -51,7 +52,7 @@ for (int i = 0; i < threadCount; i++)
 
                 try
                 {
-                    await WriteTagsToDiskAsync(i, page);
+                    await WriteTagsToDiskAsync(client, i, page);
                     successfulTagLists.Add(page);
                 }
                 catch (Exception)
@@ -79,7 +80,7 @@ Console.WriteLine($"Total: \x1b[32m{successfulTagLists.Count}\x1b[0m/\x1b[31m{TA
 
 return;
 
-async Task WriteTagsToDiskAsync(int id, int page, bool triedBefore = false)
+async Task WriteTagsToDiskAsync(HttpClient client, int id, int page, bool triedBefore = false)
 {
     async Task info(string msg)
     {
@@ -111,13 +112,13 @@ async Task WriteTagsToDiskAsync(int id, int page, bool triedBefore = false)
 
     (TagList?, string) res;
     try {
-        res = await TagList.GetTagListAsync(API_KEY, USER_ID, page);
+        res = await TagList.GetTagListAsync(client, API_KEY, USER_ID, page);
     } catch (Exception ex) when (ex is TagList.DeserialisationException or HttpRequestException) {
         if (!triedBefore) {
             await error($"Failed to get tags: {ex.Message}", @throw: false);
             await info($"Retrying...");
             await Task.Delay(1000);
-            await WriteTagsToDiskAsync(id, page, true);
+            await WriteTagsToDiskAsync(client, id, page, true);
             return;
         } else {
             await error($"Failed again");
@@ -156,9 +157,8 @@ class TagList(TagList.TagAttributes attributes, TagList.Tag[] tags)
         public DeserialisationException(string input, JsonException inner) : base("Failed to deserialise", inner) => Input = input;
     }
 
-    public static async Task<(TagList?, string)> GetTagListAsync(string apiKey, string userID, int page = 0)
+    public static async Task<(TagList?, string)> GetTagListAsync(HttpClient client, string apiKey, string userID, int page = 0)
     {
-        var client = new HttpClient();
         var response = await client.GetAsync($"https://gelbooru.com/index.php?page=dapi&s=tag&q=index&json=1&pid={page}&api_key=${apiKey}&user_id=${userID}");
         var json = await response.Content.ReadAsStringAsync();
         try {
