@@ -89,46 +89,46 @@ return;
 
 async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int page, bool triedBefore = false)
 {
-    async Task error(string msg, bool @throw = true)
+    void error(string msg, bool @throw = true)
     {
         Console.ForegroundColor = ConsoleColor.DarkRed;
         Console.SetCursorPosition(0, id);
-        await Console.Error.WriteAsync($"[{id} - {page}]\t{msg}");
+        Console.Error.Write($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
 
         if (@throw)
             throw new Exception(msg);
     }
 
-    async Task success(string msg)
+    void success(string msg)
     {
         Console.ForegroundColor = ConsoleColor.DarkGreen;
         Console.SetCursorPosition(0, Console.CursorTop + id);
-        await Console.Out.WriteAsync($"[{id} - {page}]\t{msg}");
+        Console.Out.Write($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
     }
 
     var outFile = $"pages/{page}.json";
     if (File.Exists(outFile))
-        await error($"File already exists");
+        error($"File already exists");
 
     (TagList?, string) res;
     try {
         res = await TagList.GetTagListAsync(client, API_KEY, USER_ID, page);
     } catch (Exception ex) when (ex is TagList.DeserialisationException or HttpRequestException) {
         if (!triedBefore) {
-            await error($"Failed to get tags: {ex.Message}, retrying...", @throw: false);
+            error($"Failed to get tags: {ex.Message}, retrying...", @throw: false);
             await Task.Delay(1000);
             await WriteTagsToDiskAsync(timer, client, id, page, true);
             return;
         } else {
-            await error($"Failed again, took {timer.ElapsedMilliseconds / 1000.0}s");
+            error($"Failed again, took {timer.ElapsedMilliseconds / 1000.0}s");
             throw; //unreachable
         }
     }
 
     if (res.Item1 == null || res.Item1.Tags == null || res.Item1.Tags.Length == 0)
-        await error($"No tags found");
+        error($"No tags found");
 
 
     await File.WriteAllTextAsync(outFile, res.Item2);
@@ -144,7 +144,7 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
     var tElapsed = timer.ElapsedMilliseconds / 100.0;
     var cElapsed = lastCompleted.ElapsedMilliseconds / 100.0;
 
-    await success(String.Format("Downloaded! \x1b[34mTime elapsed: {0, -100}\x1b[35mTime since last complete: {1}\x1b[0m",
+    success(String.Format("Downloaded! \x1b[34mTime elapsed: {0, -100}\x1b[35mTime since last complete: {1}\x1b[0m",
         String.Format("{0:0.00}s {1}", tElapsed / 10, numToBlocks(tElapsed)),
         String.Format("{0:0.00}s {1}", cElapsed / 10, numToBlocks(cElapsed))));
 
