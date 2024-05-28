@@ -7,6 +7,11 @@ const string USER_ID = "";
 const int TAGLIST_COUNT = 10098;
 
 var completedTagLists = new HashSet<int>();
+var failedTagLists = new HashSet<int>();
+
+if (!Directory.Exists("pages"))
+    Directory.CreateDirectory("pages");
+
 //check every file in the pages directory
 foreach (var file in Directory.EnumerateFiles("pages"))
 {
@@ -14,64 +19,62 @@ foreach (var file in Directory.EnumerateFiles("pages"))
     completedTagLists.Add(page);
 }
 
-if (args[0] != "--sync")
+var successfulTagLists = new HashSet<int>();
+
+//find the -j flag
+int threadCount = 4;
+for (int i = 0; i < args.Length; i++)
 {
-    int completedTasks = 0;
-    var tasks = new Task<bool>[TAGLIST_COUNT - completedTagLists.Count];
-    try {
-        for (int i = 0, idx = 0; i < TAGLIST_COUNT; i++)
+    if (args[i] == "-j" && i + 1 < args.Length)
+    {
+        threadCount = Int32.Parse(args[i + 1]);
+        break;
+    }
+}
+
+var tasks = new Task[threadCount]; //max 8 tasks at a time
+
+//each gets TAGLIST_COUNT / 8 pages
+for (int i = 0; i < threadCount; i++)
+{
+    var start = i * (TAGLIST_COUNT / threadCount);
+    var end = (i + 1) * (TAGLIST_COUNT / threadCount);
+
+    tasks[i] = Task.Run(async () =>
+    {
+        for (int page = start; page < end; page++)
         {
-            if (completedTagLists.Contains(i))
+            if (completedTagLists.Contains(page))
                 continue;
 
-            //2 vars (runningTasks and idx) so theres no race condition
-            tasks[idx++] = WriteTagsToDiskAsync(i).ContinueWith((task) => {
-                if (task.Result)
-                    Interlocked.Increment(ref completedTasks);
-                return task.Result;
-            });
+            try
+            {
+                await WriteTagsToDiskAsync(page);
+                successfulTagLists.Add(page);
+            }
+            catch (Exception)
+            {
+                failedTagLists.Add(page);
+            }
         }
-
-        await Task.WhenAll(tasks);
-    } catch (Exception ex) {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.Error.WriteLine("Exception reached: " + ex.Message);
-    }
-
-    Console.ForegroundColor = ConsoleColor.DarkYellow;
-    Console.WriteLine($"Statistics:");
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"Completed tasks: {completedTasks}");
-    Console.ForegroundColor = ConsoleColor.Red;
-    Console.WriteLine($"Failed tasks: {tasks.Length - completedTasks}");
-    Console.ResetColor();
-
-    Console.WriteLine($"Total: \x1b[32m{completedTasks}\x1b[0m/\x1b[31m{tasks.Length}\x1b[0m (\x1b[34m{Math.Round(completedTasks / (double)tasks.Length, 2) * 100}%\x1b[0m)");
-} else {
-    var successfulTagLists = new HashSet<int>();
-
-    for (int i = 0; i < TAGLIST_COUNT; i++)
-    {
-        if (completedTagLists.Contains(i))
-            continue;
-
-        if (WriteTagsToDisk(i))
-            successfulTagLists.Add(i);
-    }
-
-    Console.ForegroundColor = ConsoleColor.DarkYellow;
-    Console.WriteLine($"Statistics:");
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"Completed tasks: {successfulTagLists.Count}");
-    Console.ForegroundColor = ConsoleColor.Red;
-    Console.WriteLine($"Failed tasks: {TAGLIST_COUNT - successfulTagLists.Count}");
-    Console.ResetColor();
-
-    Console.WriteLine($"Total: \x1b[32m{successfulTagLists.Count}\x1b[0m/\x1b[31m{TAGLIST_COUNT}\x1b[0m (\x1b[34m{Math.Round(successfulTagLists.Count / (double)TAGLIST_COUNT, 2) * 100}%\x1b[0m)");
+    });
 }
+
+await Task.WhenAll(tasks);
+
+Console.ForegroundColor = ConsoleColor.DarkYellow;
+Console.WriteLine($"Statistics:");
+Console.ForegroundColor = ConsoleColor.Green;
+Console.WriteLine($"Completed tasks: {successfulTagLists.Count}");
+Console.ForegroundColor = ConsoleColor.Red;
+Console.WriteLine($"Failed tasks: {TAGLIST_COUNT - successfulTagLists.Count}");
+Console.ResetColor();
+
+Console.WriteLine($"Total: \x1b[32m{successfulTagLists.Count}\x1b[0m/\x1b[31m{TAGLIST_COUNT}\x1b[0m (\x1b[34m{Math.Round(successfulTagLists.Count / (double)TAGLIST_COUNT, 2) * 100}%\x1b[0m)");
+
 return;
 
-async Task<bool> WriteTagsToDiskAsync(int page, bool triedBefore = false)
+async Task WriteTagsToDiskAsync(int page, bool triedBefore = false)
 {
     var info = async (string msg) => {
         Console.ForegroundColor = ConsoleColor.DarkMagenta;
@@ -83,6 +86,8 @@ async Task<bool> WriteTagsToDiskAsync(int page, bool triedBefore = false)
         Console.ForegroundColor = ConsoleColor.DarkRed;
         await Console.Error.WriteLineAsync($"[{page}] {msg}");
         Console.ResetColor();
+
+        throw new Exception(msg);
     };
 
     var success = async (string msg) => {
@@ -94,88 +99,31 @@ async Task<bool> WriteTagsToDiskAsync(int page, bool triedBefore = false)
     if (!triedBefore)
         await info($"Starting");
     var outFile = $"pages/{page}.json";
-    if (File.Exists(outFile)) {
+    if (File.Exists(outFile))
         await error($"File already exists");
-        return false;
-    }
+
     (TagList?, string) res;
     try {
         res = await TagList.GetTagListAsync(API_KEY, USER_ID, page);
-    }
-    catch (Exception ex) when (ex is TagList.DeserialisationException or HttpRequestException) {
+    } catch (Exception ex) when (ex is TagList.DeserialisationException or HttpRequestException) {
         if (!triedBefore) {
             await error($"Failed to get tags: {ex.Message}");
             await info($"Retrying...");
-            return await WriteTagsToDiskAsync(page, true);
+            await WriteTagsToDiskAsync(page, true);
+            return;
         } else {
             await error($"Failed again");
+            throw;
         }
+    }
 
-        return false;
-    }
     if (res.Item1 == null || res.Item1.Tags == null || res.Item1.Tags.Length == 0)
-    {
         await error($"No tags found");
-        return false;
-    }
+
 
     await File.WriteAllTextAsync(outFile, res.Item2);
 
     await success($"Done!");
-    return true;
-}
-
-bool WriteTagsToDisk(int page, bool triedBefore = false)
-{
-    var info = (string msg) => {
-        Console.ForegroundColor = ConsoleColor.DarkMagenta;
-        Console.Out.WriteLine($"[{page}] {msg}");
-        Console.ResetColor();
-    };
-
-    var error = (string msg) => {
-        Console.ForegroundColor = ConsoleColor.DarkRed;
-        Console.Error.WriteLine($"[{page}] {msg}");
-        Console.ResetColor();
-    };
-
-    var success = (string msg) => {
-        Console.ForegroundColor = ConsoleColor.DarkGreen;
-        Console.Out.WriteLine($"[{page}] {msg}");
-        Console.ResetColor();
-    };
-
-    if (!triedBefore)
-        info("Starting");
-    var outFile = $"pages/{page}.json";
-    if (File.Exists(outFile)) {
-        error("File already exists");
-        return false;
-    }
-    (TagList?, string) res;
-    try {
-        res = TagList.GetTagList(API_KEY, USER_ID, page);
-    }
-    catch (Exception ex) when (ex is TagList.DeserialisationException or HttpRequestException) {
-        if (!triedBefore) {
-            error($"Failed to get tags: {ex.Message}");
-            info("Retrying...");
-            return WriteTagsToDisk(page, true);
-        } else {
-            error("Failed again");
-        }
-
-        return false;
-    }
-    if (res.Item1 == null || res.Item1.Tags == null || res.Item1.Tags.Length == 0)
-    {
-        error("No tags found");
-        return false;
-    }
-
-    File.WriteAllText(outFile, res.Item2);
-    success("Done!");
-    return true;
 }
 
 class TagList(TagList.TagAttributes attributes, TagList.Tag[] tags)
