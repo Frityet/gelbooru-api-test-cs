@@ -134,7 +134,7 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
         return new string('█', (int)whole) + (frac > 0 ? new string('▌', (int)(frac * 2)) : "");
     };
 
-    await success($"Downloaded! \x1b[35m{lastCompleted.ElapsedMilliseconds / 1000.0}s since last completion\x1b[0m \t{numToBlocks( timer.ElapsedMilliseconds / 100.0)}");
+    await success($"Downloaded! \x1b[34m{numToBlocks( timer.ElapsedMilliseconds / 100.0)}\t\x1b[35m{numToBlocks(lastCompleted.ElapsedMilliseconds / 100.0)}\x1b[0m");
     lastCompleted.Restart();
     timer.Restart();
 }
