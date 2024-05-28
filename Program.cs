@@ -44,7 +44,7 @@ for (int i = 0; i < threadCount; i++)
 
     void fn(int i)
     {
-        tasks[i] = Task.Run(async () =>
+        tasks[i-1] = Task.Run(async () =>
         {
             using var client = new HttpClient();
             var timer = Stopwatch.StartNew();
@@ -66,13 +66,21 @@ for (int i = 0; i < threadCount; i++)
         });
     }
     //so we capture the value of i, no race condition
-    fn(i);
+    fn(i+1);
 }
 
 Console.Clear();
 
 Console.CursorVisible = false;
-await Task.WhenAll(tasks);
+var task = Task.WhenAll(tasks);
+while (!task.IsCompleted)
+{
+    var elapsed = lastCompleted.ElapsedMilliseconds / 100.0;
+    Console.SetCursorPosition(0, 0);
+    ClearCurrentConsoleLine();
+    Console.Write($"{successfulTagLists.Count}/{TAGLIST_COUNT} ({Math.Round(successfulTagLists.Count / (double)TAGLIST_COUNT, 2) * 100}%) completed \t {String.Format("{0:0.00}s {1, -64}", elapsed / 10, NumberToBlocks(elapsed))}");
+    await Task.Delay(100);
+}
 Console.CursorVisible = true;
 
 Console.ForegroundColor = ConsoleColor.DarkYellow;
@@ -83,7 +91,7 @@ Console.ForegroundColor = ConsoleColor.Red;
 Console.WriteLine($"Failed tasks: {TAGLIST_COUNT - successfulTagLists.Count}");
 Console.ResetColor();
 
-Console.WriteLine($"Total: \x1b[32m{successfulTagLists.Count}\x1b[0m/\x1b[31m{TAGLIST_COUNT}\x1b[0m (\x1b[34m{Math.Round(successfulTagLists.Count / (double)TAGLIST_COUNT, 2) * 100}%\x1b[0m)");
+// Console.WriteLine($"Total: \x1b[32m{successfulTagLists.Count}\x1b[0m/\x1b[31m{TAGLIST_COUNT}\x1b[0m (\x1b[34m{String.Format("{0:0.00}, {1}", Math.Round(successfulTagLists.Count / (double)TAGLIST_COUNT, 2) * 100)}%\x1b[0m)");
 
 return;
 
@@ -94,6 +102,15 @@ void ClearCurrentConsoleLine()
     Console.Write(new string(' ', Console.WindowWidth));
     Console.SetCursorPosition(0, currentLineCursor);
 }
+
+//displays double as unicode blocks, so 1.5 is one block, and then a half block
+string NumberToBlocks(double num)
+{
+    var whole = Math.Floor(num);
+    var frac = num - whole;
+    return new string('█', (int)whole) + (frac > 0 ? new string('▌', (int)(frac * 2)) : "");
+}
+
 
 async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int page, bool triedBefore = false)
 {
@@ -143,20 +160,8 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
 
     await File.WriteAllTextAsync(outFile, res.Item2);
 
-    //displays double as unicode blocks, so 1.5 is one block, and then a half block
-    string numToBlocks(double num)
-    {
-        var whole = Math.Floor(num);
-        var frac = num - whole;
-        return new string('█', (int)whole) + (frac > 0 ? new string('▌', (int)(frac * 2)) : "");
-    }
-
     var tElapsed = timer.ElapsedMilliseconds / 100.0;
-    var cElapsed = lastCompleted.ElapsedMilliseconds / 100.0;
-
-    success(String.Format("Downloaded! \x1b[34mTime elapsed: {0, -100}\x1b[35mTime since last complete: {1}\x1b[0m",
-        String.Format("{0:0.00}s {1}", tElapsed / 10, numToBlocks(tElapsed)),
-        String.Format("{0:0.00}s {1}", cElapsed / 10, numToBlocks(cElapsed))));
+    success(String.Format("Downloaded! \x1b[34mTime elapsed: {0, -100}", String.Format("{0:0.00}s {1}", tElapsed / 10, NumberToBlocks(tElapsed))));
 
     lastCompleted.Restart();
     timer.Restart();
