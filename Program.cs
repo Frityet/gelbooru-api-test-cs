@@ -135,7 +135,7 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
 
     await File.WriteAllTextAsync(outFile, res.Item2);
 
-    await success($"Downloaded! \x1b[34mTook {timer.ElapsedMilliseconds / 1000.0}s\x1b[0m (\x1b[35m{lastCompleted.ElapsedMilliseconds / 1000.0}s since last completionx1b[0m)");
+    await success($"Downloaded! \x1b[34mTook {timer.ElapsedMilliseconds / 1000.0}s\x1b[0m\t(\x1b[35m{lastCompleted.ElapsedMilliseconds / 1000.0}s since last completion\x1b[0m)");
     lastCompleted.Restart();
     timer.Restart();
 }
