@@ -40,24 +40,29 @@ for (int i = 0; i < threadCount; i++)
     var start = i * (TAGLIST_COUNT / threadCount);
     var end = (i + 1) * (TAGLIST_COUNT / threadCount);
 
-    tasks[i] = Task.Run(async () =>
+    void fn(int i)
     {
-        for (int page = start; page < end; page++)
+        tasks[i] = Task.Run(async () =>
         {
-            if (completedTagLists.Contains(page))
-                continue;
+            for (int page = start; page < end; page++)
+            {
+                if (completedTagLists.Contains(page))
+                    continue;
 
-            try
-            {
-                await WriteTagsToDiskAsync(page);
-                successfulTagLists.Add(page);
+                try
+                {
+                    await WriteTagsToDiskAsync(i, page);
+                    successfulTagLists.Add(page);
+                }
+                catch (Exception)
+                {
+                    failedTagLists.Add(page);
+                }
             }
-            catch (Exception)
-            {
-                failedTagLists.Add(page);
-            }
-        }
-    });
+        });
+    }
+    //so we capture the value of i, no race condition
+    fn(i);
 }
 
 await Task.WhenAll(tasks);
@@ -74,17 +79,17 @@ Console.WriteLine($"Total: \x1b[32m{successfulTagLists.Count}\x1b[0m/\x1b[31m{TA
 
 return;
 
-async Task WriteTagsToDiskAsync(int page, bool triedBefore = false)
+async Task WriteTagsToDiskAsync(int id, int page, bool triedBefore = false)
 {
     var info = async (string msg) => {
         Console.ForegroundColor = ConsoleColor.DarkMagenta;
-        await Console.Out.WriteLineAsync($"[{page}] {msg}");
+        await Console.Out.WriteLineAsync($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
     };
 
     var error = async (string msg) => {
         Console.ForegroundColor = ConsoleColor.DarkRed;
-        await Console.Error.WriteLineAsync($"[{page}] {msg}");
+        await Console.Error.WriteLineAsync($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
 
         throw new Exception(msg);
@@ -92,7 +97,7 @@ async Task WriteTagsToDiskAsync(int page, bool triedBefore = false)
 
     var success = async (string msg) => {
         Console.ForegroundColor = ConsoleColor.DarkGreen;
-        await Console.Out.WriteLineAsync($"[{page}] {msg}");
+        await Console.Out.WriteLineAsync($"{id} - [{page}]\t{msg}");
         Console.ResetColor();
     };
 
@@ -109,7 +114,7 @@ async Task WriteTagsToDiskAsync(int page, bool triedBefore = false)
         if (!triedBefore) {
             await error($"Failed to get tags: {ex.Message}");
             await info($"Retrying...");
-            await WriteTagsToDiskAsync(page, true);
+            await WriteTagsToDiskAsync(id, page, true);
             return;
         } else {
             await error($"Failed again");
