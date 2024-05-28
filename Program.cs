@@ -103,7 +103,7 @@ async Task WriteTagsToDiskAsync(Stopwatch timer, HttpClient client, int id, int 
     void success(string msg)
     {
         Console.ForegroundColor = ConsoleColor.DarkGreen;
-        Console.SetCursorPosition(0, Console.CursorTop + id);
+        Console.SetCursorPosition(0, id);
         Console.Out.Write($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
     }
