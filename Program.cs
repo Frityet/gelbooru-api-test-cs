@@ -81,25 +81,29 @@ return;
 
 async Task WriteTagsToDiskAsync(int id, int page, bool triedBefore = false)
 {
-    var info = async (string msg) => {
+    async Task info(string msg)
+    {
         Console.ForegroundColor = ConsoleColor.DarkMagenta;
         await Console.Out.WriteLineAsync($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
-    };
+    }
 
-    var error = async (string msg) => {
+    async Task error(string msg, bool @throw = true)
+    {
         Console.ForegroundColor = ConsoleColor.DarkRed;
         await Console.Error.WriteLineAsync($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
 
-        throw new Exception(msg);
-    };
+        if (@throw)
+            throw new Exception(msg);
+    }
 
-    var success = async (string msg) => {
+    async Task success(string msg)
+    {
         Console.ForegroundColor = ConsoleColor.DarkGreen;
         await Console.Out.WriteLineAsync($"[{id} - {page}]\t{msg}");
         Console.ResetColor();
-    };
+    }
 
     if (!triedBefore)
         await info($"Starting");
@@ -112,8 +116,9 @@ async Task WriteTagsToDiskAsync(int id, int page, bool triedBefore = false)
         res = await TagList.GetTagListAsync(API_KEY, USER_ID, page);
     } catch (Exception ex) when (ex is TagList.DeserialisationException or HttpRequestException) {
         if (!triedBefore) {
-            await error($"Failed to get tags: {ex.Message}");
+            await error($"Failed to get tags: {ex.Message}", @throw: false);
             await info($"Retrying...");
+            await Task.Delay(1000);
             await WriteTagsToDiskAsync(id, page, true);
             return;
         } else {
